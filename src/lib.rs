@@ -19,7 +19,7 @@
 //!
 //! this lib is used to implement p2p connection between devices
 
-pub use agent::{Agent, AgentState};
+pub use agent::{Agent, AgentState, AgentEvent};
 pub use candidate::{Candidate, CandidateType, PairState};
 pub use error::Error;
 pub use imp::P2PManager;

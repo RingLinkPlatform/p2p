@@ -20,7 +20,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tracing::{trace, warn};
@@ -175,16 +175,19 @@ where
 
             self.server_gather.handle_input(message, src).await;
         } else {
-            let verified = self.identity.verify(&binding.body, &binding.signature)?;
-            if !verified {
-                return Err(Error::InvalidSignature);
-            }
+            let mut sig_buff = BytesMut::with_capacity(binding.body.len() + size_of::<DeviceID>());
+            sig_buff.put(&*binding.from);
+            sig_buff.put(&*binding.body);
 
             let message = BindMessage::decode(&*binding.body)?;
 
             let agents = self.agents.read().await;
             match agents.get(&binding.from) {
                 Some(agent) => {
+                    let verified = agent.verify(&sig_buff, &binding.signature)?;
+                    if !verified {
+                        return Err(Error::InvalidSignature);
+                    }
                     agent.handle_input(message, src).await?;
                 }
                 None => {

@@ -81,6 +81,12 @@ impl From<u8> for AgentState {
     }
 }
 
+#[derive(Clone)]
+pub enum AgentEvent {
+    StateChange(AgentState),
+    AddressChange(SocketAddr),
+}
+
 struct AgentInner<T> {
     /// agent use identity to sign message
     identity: Identity,
@@ -109,7 +115,7 @@ struct AgentInner<T> {
     /// task notify
     notify: Arc<Notify>,
     /// send agent state change event
-    event: Sender<AgentState>,
+    event: Sender<AgentEvent>,
 }
 
 /// agent for establish peer-to-peer connection.
@@ -238,6 +244,15 @@ where
             handle,
             notify,
         }
+    }
+
+    pub(crate) fn verify(
+        &self,
+        data: impl AsRef<[u8]>,
+        signature: impl AsRef<[u8]>,
+    ) -> Result<bool> {
+        let verified = self.inner.public_identity.verify(data, signature)?;
+        Ok(verified)
     }
 
     pub async fn handle_input(&self, message: BindMessage, src: SocketAddr) -> Result<()> {
@@ -372,7 +387,7 @@ impl<T> Agent<T> {
         self.inner.state()
     }
 
-    pub fn subscribe_state(&self) -> Receiver<AgentState> {
+    pub fn subscribe_state(&self) -> Receiver<AgentEvent> {
         self.inner.event.subscribe()
     }
 
@@ -547,6 +562,7 @@ where
                         if current != nominated {
                             debug!("new selected pair: {}", nominated);
                             self.selected.store(Some(Arc::new(nominated)));
+                            _ = self.event.send(AgentEvent::AddressChange(nominated));
                         }
                         self.latency.store(latency, Ordering::Relaxed);
                     }
@@ -901,7 +917,7 @@ impl<T> AgentInner<T> {
 
     fn set_state(&self, state: AgentState) {
         self.state.store(state as u8, Ordering::Release);
-        let _ = self.event.send(state);
+        let _ = self.event.send(AgentEvent::StateChange(state));
     }
 
     async fn add_remote_reflexive_candidate(
