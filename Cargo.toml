@@ -6,9 +6,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ringlink-identity = { path = "../ringlink-identity" }
-ringlink-protocol = { path = "../ringlink-protocol" }
-ringlink-transport = { path = "../ringlink-transport" }
+ringlink-identity = { git = "https://github.com/RingLinkPlatform/identity" }
+ringlink-protocol = { git = "https://github.com/RingLinkPlatform/protocol" }
+ringlink-transport = {git = "https://github.com/RingLinkPlatform/transport" }
 
 tokio = { version = "1.42.0", features = ["sync", "io-util", "rt", "rt-multi-thread", "time"] }
 thiserror = "2.0.6"
